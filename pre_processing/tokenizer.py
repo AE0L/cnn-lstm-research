@@ -1,8 +1,8 @@
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.keras.preprocessing import text
 from tensorflow.keras.preprocessing.text import Tokenizer
+# from tensorflow.keras.preprocessing import text
 
-TOP_K = 2000
+TOP_K = 2000  # no. of common words to be kept
 MAX_SEQUENCE_LENGTH = 50
 
 
