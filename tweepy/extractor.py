@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 class DataExtract:
 
-    def process(userid, sinceDate):
+    def process(userid, sinceDate, endDate):
         youarehappy = "yes"
         access_token = '1449676365893038088-pdugze1ET3LcXHZ4MhgW5KLtDNgi2k'
         access_token_secret = 'bT4xTEVL5IrCkv1MkrorKjzdID4RCPNVankEMmOlALNJL'

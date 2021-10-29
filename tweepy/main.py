@@ -130,10 +130,11 @@ username_button.pack(padx=7, pady=5, side=BOTTOM)
 root.mainloop()
 
 
-def extractTweet(userid, sinceDate):
+def extractTweet(userid, sinceDate, endDate):
     sinceDate = sinceDate.get_date()
+    endDate = endDate.get_date()
     from extractor import DataExtract
-    DataExtract.process(userid, sinceDate)
+    DataExtract.process(userid, sinceDate, endDate)
 
 
 def selectDate(choice, userid):
@@ -144,21 +145,15 @@ def selectDate(choice, userid):
 
     if choice == "Okay":
         # Create a Label
-        Label(user, text="Start Date", background='gray61', foreground="white", font=(
-            "ariel 12"), justify=LEFT).pack(padx=20, pady=20)
-        # Create a Calendar using DateEntry
-        sinceDate = DateEntry(user, width=16, background="lightblue",
-                              foreground="white", bd=2, date_pattern='mm/dd/yyyy')
-        sinceDate.pack(pady=5)
-        # Create a Label
         Label(user, text="End Date", background='gray61', foreground="white", font=(
             "ariel 12"), justify=LEFT).pack(padx=20, pady=20)
         # Create a Calendar using DateEntry
-        # cal = DateEntry(user, width= 16, background= "lightblue", foreground= "white",bd=2)
-        # cal.pack(pady=5)
+        endDate = DateEntry(user, width=16, background="lightblue",
+                            foreground="white", bd=2, date_pattern='mm/dd/yyyy')
+        endDate.pack(pady=5)
 
         cal_button = ttk.Button(user, text='Classify User', style='success.TButton',
-                                command=lambda: extractTweet(userid, sinceDate))
+                                command=lambda: extractTweet(userid, sinceDate, endDate))
         cal_button.pack(padx=7, pady=5)
 
     else:
