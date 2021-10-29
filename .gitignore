@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 pre_processing/glove.6B.50d.txt
 
-/res/
+/res/*
