@@ -32,6 +32,10 @@ class DataExtract:
         startDate = datetime.datetime(
             date.year, date.month, date.day, 0, 0, 0, tzinfo=utc)
 
+        date1 = datetime.datetime.strptime(str(endDate), "%Y-%m-%d")
+        lastDate = datetime.datetime(
+            date1.year, date1.month, date1.day, 0, 0, 0, tzinfo=utc)
+
         print(userid)
 
         progress = tqdm(
@@ -40,7 +44,7 @@ class DataExtract:
 
         for tweet in progress:
             progress.set_description("Processing %i tweets" % count)
-            if tweet.created_at >= startDate:
+            if tweet.created_at <= lastDate and tweet.created_at >= startDate:
                 try:
                     data = [tweet.created_at, tweet.full_text,
                             tweet.user._json['screen_name'], tweet.user._json['name']]
