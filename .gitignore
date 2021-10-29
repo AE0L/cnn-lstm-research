@@ -128,3 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 pre_processing/glove.6B.50d.txt
+
+/res/
