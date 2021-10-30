@@ -43,3 +43,6 @@ button:hover[type="submit"]{
 	color: black;
 	text-align: center;
 }
+td{
+	width: 90%;
+}
