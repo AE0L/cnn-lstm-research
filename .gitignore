@@ -130,3 +130,4 @@ dmypy.json
 pre_processing/glove.6B.50d.txt
 
 /res/*
+tweepy/output/trial.csv

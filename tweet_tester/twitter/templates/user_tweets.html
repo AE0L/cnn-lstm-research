@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <title>Document</title>
+
+        <style>
+            .tweet_card {
+                border: 1px solid black;
+                padding: 1em;
+            }
+        </style>
+    </head>
+
+    <body>
+        {% for tweet in output %}
+            <div class="tweet_card">
+                {{ tweet.0 }}
+            </div>
+        {% endfor %}
+    </body>
+
+</html>

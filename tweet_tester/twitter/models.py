@@ -32,7 +32,7 @@ class Tweepy:
         }
 
     @staticmethod
-    def get_tweets(userid, since_date):
+    def get_tweets(userid, since_date, end_date):
         access_token = '1449676365893038088-pdugze1ET3LcXHZ4MhgW5KLtDNgi2k'
         access_token_secret = 'bT4xTEVL5IrCkv1MkrorKjzdID4RCPNVankEMmOlALNJL'
         consumer_key = 'fSqFCU8DvkTd8XitEaWNA3ASN'
@@ -50,6 +50,10 @@ class Tweepy:
         start_date = datetime.datetime(
             date.year, date.month, date.day, 0, 0, 0, tzinfo=utc)
 
+        date1 = datetime.datetime.strptime(str(end_date), "%Y-%m-%d")
+        last_date = datetime.datetime(
+            date1.year, date1.month, date1.day, 0, 0, 0, tzinfo=utc)
+
         print(userid)
 
         progress = tqdm(
@@ -59,6 +63,7 @@ class Tweepy:
         for tweet in progress:
             progress.set_description("Processing %i tweets" % count)
             if tweet.created_at >= start_date:
+                # if tweet.created_at <= last_date and tweet.created_at >= start_date:
                 try:
                     data = [tweet.created_at, tweet.full_text,
                             tweet.user._json['screen_name'], tweet.user._json['name']]
@@ -78,14 +83,20 @@ class Tweepy:
                 break
 
         print("Finished. Retrieved " + str(count-1) + " tweets.")
-        df = pd.DataFrame(tweets,
-                          columns=['created_at', 'tweet_text', 'screen_name', 'name'])
+        df = pd.DataFrame(
+            tweets, columns=['created_at', 'tweet_text', 'screen_name', 'name'])
+        tweets = []
 
-        # rawtweet_df = pd.DataFrame(raw_tweets,
-        # columns=['tweet_text'])
+        for index, row in df.iterrows():
+            tweets.append([row['tweet_text'], row['created_at']])
 
-        output_file = 'trial.csv'
-        output_dir = Path('output/')
-        output_dir.mkdir(parents=True, exist_ok=True)
+        return tweets
 
-        df.to_csv(output_dir / output_file, index=False)
+        # # rawtweet_df = pd.DataFrame(raw_tweets,
+        # # columns=['tweet_text'])
+
+        # output_file = 'trial.csv'
+        # output_dir = Path('output/')
+        # output_dir.mkdir(parents=True, exist_ok=True)
+
+        # df.to_csv(output_dir / output_file, index=False)
