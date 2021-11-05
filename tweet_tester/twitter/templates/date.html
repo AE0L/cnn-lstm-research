@@ -34,9 +34,9 @@
                     <div class="container-fluid">
                         <div class="div_info">
                             <h5 class="mt-3 mb-3">User Summary</h5>
-                            <label class="form-label" id="info">Username: {{user_handle}}</label><br>
-                            <label class="form-label">User ID: {{user_id}}</label><br>
-                            <label class="form-label mb-3">Privacy Settings: {{user_auth}}</label><br>
+                            <label class="form-label" id="info">Username: {{request.session.user_handle}}</label><br>
+                            <label class="form-label">User ID: {{request.session.user_id}}</label><br>
+                            <label class="form-label mb-3">Privacy Settings: {{request.session.user_auth}}</label><br>
                         </div>
                         <hr>
                         <div class="dateset">
