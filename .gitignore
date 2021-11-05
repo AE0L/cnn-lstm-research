@@ -131,3 +131,4 @@ pre_processing/glove.6B.50d.txt
 
 /res/*
 tweepy/output/trial.csv
+tweet_tester/twitter/res/glove.txt
