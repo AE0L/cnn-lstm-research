@@ -6,12 +6,21 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytz
+from tensorflow.python.keras.backend import constant, dtype
+from tensorflow.python.keras.engine.input_layer import Input
+from tensorflow.python.keras.layers.convolutional import Conv1D
+from tensorflow.python.keras.layers.core import Dense, Dropout
+from keras.layers import Embedding
+from tensorflow.python.keras.layers.pooling import MaxPool1D, MaxPooling1D
+from tensorflow.python.keras.layers.recurrent import LSTM
+from tensorflow.python.keras.layers.wrappers import TimeDistributed
 import tweepy
 from django.db import models
 from nltk.corpus import stopwords
 from spellchecker.spellchecker import SpellChecker
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.models import Sequential
 from tqdm import tqdm
 
 
@@ -197,6 +206,36 @@ class EmbeddingMatrix:
                     embedding_matrix[i] = vect[:self.EMBEDDING_VECTOR_LENGTH]
 
         return embedding_matrix
+
+
+class CNNLSTMModel:
+    def __init__(self, tokenizer, embedding_matrix):
+        input_dim = len(tokenizer.word_index) + 1
+        embedding_layer = Embedding(input_dim, EmbeddingMatrix.EMBEDDING_VECTOR_LENGTH, input_length=TweetTokenizer.MAX_SEQUENCE_LENGTH, weights=[embedding_matrix])
+
+        sequence_input = Input(TweetTokenizer.MAX_SEQUENCE_LENGTH, dtype='int32')
+        embedded_sequence = embedding_layer(sequence_input)
+    
+        model = Sequential()
+        model.add(embedding_layer)
+        model.add(Conv1D(3, 1, activation='relu'))
+        model.add(MaxPooling1D(1))
+        model.add(LSTM(100, dropout=0.8))
+        model.add(Dense(1, activation='sigmoid'))
+
+        model.compile(loss='binary_crossentropy',
+                           optimizer='adam', metrics=['accuracy'])
+
+        self.model = model
+        print(model.summary())
+
+    def train(self, X_train, Y_train):
+        # TODO
+        print()
+
+    def test(self, test_dataset):
+        pred = self.model.predict(test_dataset)
+        print(pred)
 
 
 class TweetModel(models.Model):

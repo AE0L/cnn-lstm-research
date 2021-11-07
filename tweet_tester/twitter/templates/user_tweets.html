@@ -40,11 +40,9 @@
 
                     {% for tweet in output %}
                     <div class="tweet_card">
-                        <pre>
-                            {{ tweet.text }}
-                            <br>
-                            {{ tweet.vector }}
-                        </pre>
+                        {{ tweet.text }}
+                        <br>
+                        {{ tweet.vector }}
                     </div>
                     {% endfor %}
 

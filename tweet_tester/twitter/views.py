@@ -1,6 +1,7 @@
 import json
+import numpy as np
 from django.shortcuts import render, redirect
-from .models import EmbeddingMatrix, Tweepy, PreProcessor, TweetModel, TweetTokenizer
+from .models import CNNLSTMModel, EmbeddingMatrix, Tweepy, PreProcessor, TweetModel, TweetTokenizer
 from operator import itemgetter
 from ast import literal_eval
 import os
@@ -62,11 +63,14 @@ def analyze_tweets(req):
         vectors = tokenize_tweets(cleaned)
         output = []
 
+        model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
+        model.test(model.model.predict(np.array(vectors['vectors'])))
+
         for i, t in enumerate(cleaned):
             o = {
                 'text': t,
-                'vector': vectors.vectors[i],
-                'matrix': vectors.matrix[i]
+                'vector': vectors['vectors'][i],
+                'matrix': vectors['matrix'][i]
             }
             output.append(o)
 
@@ -91,4 +95,4 @@ def tokenize_tweets(cleaned_tweets):
     matrix = embedding_matrix.construct_embedding_matrix(
         file_path, tokenizer.tokenizer.word_index)
 
-    return {'vectors': vectors, 'matrix': matrix}
+    return {'vectors': vectors, 'matrix': matrix, 'tokenizer': tokenizer}
