@@ -1,22 +1,25 @@
 import datetime
+import os
 import re
 import string
 from pathlib import Path
+import nltk
 
 import numpy as np
 import pandas as pd
 import pytz
+from keras import models as kmodels
 from tensorflow.python.keras.backend import constant, dtype
 from tensorflow.python.keras.engine.input_layer import Input
 from tensorflow.python.keras.layers.convolutional import Conv1D
 from tensorflow.python.keras.layers.core import Dense, Dropout
 from keras.layers import Embedding
-from tensorflow.python.keras.layers.pooling import MaxPool1D, MaxPooling1D
+from tensorflow.python.keras.layers.pooling import GlobalMaxPool1D, MaxPool1D, MaxPooling1D
 from tensorflow.python.keras.layers.recurrent import LSTM
 from tensorflow.python.keras.layers.wrappers import TimeDistributed
 import tweepy
 from django.db import models
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, words
 from spellchecker.spellchecker import SpellChecker
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.preprocessing.text import Tokenizer
@@ -78,21 +81,21 @@ class Tweepy:
         for tweet in progress:
             progress.set_description("Processing %i tweets" % count)
             if tweet.created_at >= start_date:
-                # if tweet.created_at <= last_date and tweet.created_at >= start_date:
-                try:
-                    data = [tweet.created_at, tweet.full_text,
-                            tweet.user._json['screen_name'], tweet.user._json['name']]
-                    data = tuple(data)
+                if tweet.created_at <= last_date:
+                    try:
+                        data = [tweet.created_at, tweet.full_text,
+                                tweet.user._json['screen_name'], tweet.user._json['name']]
+                        data = tuple(data)
 
-                    tweets.append(data)
+                        tweets.append(data)
 
-                    count += 1
+                        count += 1
 
-                except tweepy.TweepError as e:
-                    continue
-
-                except StopIteration:
-                    break
+                    except tweepy.TweepError as e:
+                        print(e)
+                        continue
+                    except StopIteration:
+                        break
             else:
                 break
 
@@ -132,8 +135,7 @@ class PreProcessor:
         tweet = tweet.lower().strip()
 
         # remove URLs
-        URL = re.compile(r'https?://\S+|www\.\S+')
-        tweet = URL.sub(r'', tweet)
+        tweet = re.sub(r'http\S+', '', tweet)
 
         # remove punctuations
         puncts = str.maketrans('', '', string.punctuation)
@@ -143,16 +145,23 @@ class PreProcessor:
         digits = str.maketrans('', '', string.digits)
         tweet = tweet.translate(digits)
 
-        # check spelling
-        tweet = self.correct_spelling(tweet)
-
         # remove emojis
         tweet = tweet.encode('ascii', 'ignore')
         tweet = tweet.decode('UTF-8').strip()
 
+        # check spelling
+        tweet = self.correct_spelling(tweet)
+
         # remove stop words
         tweet = ' '.join([word for word in tweet.split()
                          if word not in self.stopwords])
+
+        # remove non-english words
+        eng_words = set(words.words())
+        tweet = ' '.join([w for w in nltk.wordpunct_tokenize(tweet)
+                         if w.lower() in eng_words or not w.isalpha()])
+        tweet = ' '.join([w for w in tweet.split() if len(w) > 2])
+
 
         return tweet
 
@@ -209,33 +218,47 @@ class EmbeddingMatrix:
 
 
 class CNNLSTMModel:
-    def __init__(self, tokenizer, embedding_matrix):
-        input_dim = len(tokenizer.word_index) + 1
-        embedding_layer = Embedding(input_dim, EmbeddingMatrix.EMBEDDING_VECTOR_LENGTH, input_length=TweetTokenizer.MAX_SEQUENCE_LENGTH, weights=[embedding_matrix])
+    LABELS = ['depression', 'anxiety', 'none']
 
-        sequence_input = Input(TweetTokenizer.MAX_SEQUENCE_LENGTH, dtype='int32')
-        embedded_sequence = embedding_layer(sequence_input)
-    
+    def __init__(self, tokenizer, embedding_matrix):
+        # module_dir = os.path.dirname(__file__)
+        # model_file_path = os.path.join(module_dir, 'res/cnn-lstm-model')
+
+        # if os.path.exists(model_file_path):
+        #     print('LOADING MODEL...')
+        #     self.model = kmodels.load_model(model_file_path)
+        # else:
+        input_dim = len(tokenizer.word_index) + 1
+        embedding_layer = Embedding(input_dim, EmbeddingMatrix.EMBEDDING_VECTOR_LENGTH,
+                                    input_length=TweetTokenizer.MAX_SEQUENCE_LENGTH, weights=[embedding_matrix], trainable=False)
         model = Sequential()
         model.add(embedding_layer)
-        model.add(Conv1D(3, 1, activation='relu'))
-        model.add(MaxPooling1D(1))
-        model.add(LSTM(100, dropout=0.8))
-        model.add(Dense(1, activation='sigmoid'))
+        model.add(Conv1D(128, 3, activation='relu'))
+        model.add(MaxPool1D(2))
+        model.add(LSTM(100, dropout=0.2))
+        model.add(Dense(3, activation='softmax'))
 
-        model.compile(loss='binary_crossentropy',
-                           optimizer='adam', metrics=['accuracy'])
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='adam', metrics=['accuracy'])
 
         self.model = model
+        # self.model.save(model_file_path)
         print(model.summary())
 
-    def train(self, X_train, Y_train):
-        # TODO
-        print()
+    def train(self, x_train, y_train):
+        epochs = 10
+        # self.model.fit(x_train, y_train, epochs=epochs,
+        #                validation_data=(x_test, y_test), verbose=2)
+        self.model.fit(x_train, y_train, epochs=epochs, verbose=2)
 
-    def test(self, test_dataset):
-        pred = self.model.predict(test_dataset)
-        print(pred)
+    def test(self, test_seq):
+        preds = self.model.predict(test_seq)
+        pred_avg = np.average(preds)
+        pred_cat = self.LABELS[np.argmax(pred_avg)]
+
+        print('predict_classes:', preds)
+
+        return {'pred_cat': pred_cat, 'preds': preds}
 
 
 class TweetModel(models.Model):

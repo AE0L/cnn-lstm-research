@@ -132,3 +132,8 @@ pre_processing/glove.6B.50d.txt
 /res/*
 tweepy/output/trial.csv
 tweet_tester/twitter/res/glove.txt
+tweet_tester/twitter/res/train_test.json
+tweet_tester/twitter/res/cnn-lstm-model/keras_metadata.pb
+tweet_tester/twitter/res/cnn-lstm-model/saved_model.pb
+tweet_tester/twitter/res/cnn-lstm-model/variables/variables.data-00000-of-00001
+tweet_tester/twitter/res/cnn-lstm-model/variables/variables.index

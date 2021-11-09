@@ -38,28 +38,33 @@
             <div id="page-content-wrapper">
                 <!-- Page content-->
                 <div class="container-fluid">
-                    <br>
-                    <table>
-                        <tr>
-                            <td><a class="btn btn-primary" href="../date/">Date Settings</a></td>
-                            <td>
-                                <a class="btn btn-success" href="../analyze/">
-                                    Classify User
-                                </a>
-                            </td>
-                        </tr>
-                    </table>
+                    <div>
+                        <div>
+                            User: {{ query.user_handle }}
+                        </div>
 
-                    <h4>User Tweets</h4>
-
-                    {% for tweet in output %}
-                    <div class="tweet_card">
-                        {{ tweet.text }}
-                        <br>
-                        {{ tweet.timestamp }}
+                        <div>
+                            Predicted Class: {{ user_pred }}
+                        </div>
                     </div>
-                    {% endfor %}
+                </div>
 
+                <br>
+
+                <div>
+                    Tweets:
+
+                    <div>
+                        {% for tweet in tweets %}
+                        <div class="tweet_card">
+                            {{ tweet.cleaned }}
+                            <br>
+                            <strong>
+                                {{ tweet.pred_cat }}
+                            </strong>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>

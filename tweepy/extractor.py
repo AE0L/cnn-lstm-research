@@ -27,7 +27,7 @@ class DataExtract:
         utc = pytz.UTC
         count = 1
 
-        #startDate_input = input("Enter start date(mm-mm-dd): ")
+        # startDate_input = input("Enter start date(mm-mm-dd): ")
         date = datetime.datetime.strptime(str(sinceDate), "%Y-%m-%d")
         startDate = datetime.datetime(
             date.year, date.month, date.day, 0, 0, 0, tzinfo=utc)
@@ -45,32 +45,30 @@ class DataExtract:
 
         for tweet in progress:
             progress.set_description("Processing %i tweets" % count)
-                if tweet.lang == 'en':
-                    if tweet.created_at >= startDate:
-                        if tweet.created_at <= lastDate:
-                            try:
-                                data = [tweet.created_at, tweet.full_text,
-                                        tweet.user._json['screen_name'], tweet.user._json['name']]
-                                data = tuple(data)
+            if tweet.lang == 'en':
+                if tweet.created_at >= startDate:
+                    if tweet.created_at <= lastDate:
+                        try:
+                            data = [tweet.created_at, tweet.full_text,
+                                    tweet.user._json['screen_name'], tweet.user._json['name']]
+                            data = tuple(data)
 
-                                tweets.append(data)
+                            tweets.append(data)
 
-                                count += 1
+                            count += 1
 
-                            except tweepy.TweepError as e:
-                                print(e.reason)
-                                continue
+                        except tweepy.TweepError as e:
+                            print(e.reason)
+                            continue
 
-                            except StopIteration:
-                                break
-                        else:
+                        except StopIteration:
                             break
+                    else:
+                        break
 
         print("Finished. Retrieved " + str(count-1) + " tweets.")
         df = pd.DataFrame(tweets,
                           columns=['created_at', 'tweet_text', 'screen_name', 'name'])
-
-        
 
         output_file = 'trial.csv'
         output_dir = Path('output/')
