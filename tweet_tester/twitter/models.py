@@ -162,7 +162,6 @@ class PreProcessor:
                          if w.lower() in eng_words or not w.isalpha()])
         tweet = ' '.join([w for w in tweet.split() if len(w) > 2])
 
-
         return tweet
 
 
@@ -228,18 +227,44 @@ class CNNLSTMModel:
         #     print('LOADING MODEL...')
         #     self.model = kmodels.load_model(model_file_path)
         # else:
+
+        # Embedding Layer
         input_dim = len(tokenizer.word_index) + 1
-        embedding_layer = Embedding(input_dim, EmbeddingMatrix.EMBEDDING_VECTOR_LENGTH,
-                                    input_length=TweetTokenizer.MAX_SEQUENCE_LENGTH, weights=[embedding_matrix], trainable=False)
+        output_dim = EmbeddingMatrix.EMBEDDING_VECTOR_LENGTH
+        input_length = TweetTokenizer.MAX_SEQUENCE_LENGTH
+        weights = [embedding_matrix]
+        trainable = False
+        # CNN
+        filters = 128
+        kernel = 3
+        cnn_act = 'relu'
+        # Max Pooling
+        pool_size = 2
+        # LSTM
+        lstm_units = 100
+        dropout = 0.8
+        # Dense
+        dense_units = 3
+        dense_act = 'softmax'
+        # Compile
+        loss = 'categorical_crossentropy'
+        optimizer = 'adam'
+        metrics = ['accuracy']
+
+        embedding_layer = Embedding(
+            input_dim,
+            output_dim,
+            input_length=input_length,
+            weights=weights,
+            trainable=trainable
+        )
         model = Sequential()
         model.add(embedding_layer)
-        model.add(Conv1D(128, 3, activation='relu'))
-        model.add(MaxPool1D(2))
-        model.add(LSTM(100, dropout=0.2))
-        model.add(Dense(3, activation='softmax'))
-
-        model.compile(loss='categorical_crossentropy',
-                      optimizer='adam', metrics=['accuracy'])
+        model.add(Conv1D(filters, kernel, activation=cnn_act))
+        model.add(MaxPool1D(pool_size))
+        model.add(LSTM(lstm_units, dropout=dropout))
+        model.add(Dense(dense_units, activation=dense_act))
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
         self.model = model
         # self.model.save(model_file_path)
@@ -247,9 +272,8 @@ class CNNLSTMModel:
 
     def train(self, x_train, y_train):
         epochs = 10
-        # self.model.fit(x_train, y_train, epochs=epochs,
-        #                validation_data=(x_test, y_test), verbose=2)
-        self.model.fit(x_train, y_train, epochs=epochs, verbose=2)
+        verbose = 2
+        self.model.fit(x_train, y_train, epochs=epochs, verbose=verbose)
 
     def test(self, test_seq):
         preds = self.model.predict(test_seq)

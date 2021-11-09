@@ -61,22 +61,22 @@ def analyze_tweets(req):
         'query_date': record.query_date
     }
 
-    module_dir = os.path.dirname(__file__)
-    train_dir_path = os.path.join(module_dir, 'res/train_test.json')
+    # module_dir = os.path.dirname(__file__)
+    # train_dir_path = os.path.join(module_dir, 'res/train_test.json')
 
-    x_train, y_train = [], []
+    # x_train, y_train = [], []
 
-    with open(train_dir_path, encoding='utf-8') as json_file:
-        data = json.load(json_file)
-        x_train, y_train = data['x_train'], data['y_train']
+    # with open(train_dir_path, encoding='utf-8') as json_file:
+    #     data = json.load(json_file)
+    #     x_train, y_train = data['x_train'], data['y_train']
     
-    train_clean = list(clean_tweets(x_train))
-    train_vector = tokenize_tweets(train_clean)
+    # train_clean = list(clean_tweets(x_train))
+    # train_vector = tokenize_tweets(train_clean)
 
-    encoder = LabelEncoder()
-    encoder.fit(y_train)
-    encoded_y = encoder.transform(y_train)
-    tmp_y = keras.utils.np_utils.to_categorical(encoded_y)
+    # encoder = LabelEncoder()
+    # encoder.fit(y_train)
+    # encoded_y = encoder.transform(y_train)
+    # tmp_y = keras.utils.np_utils.to_categorical(encoded_y)
 
     if (query['user_handle'] == req.session['user_handle']):
         debug = False
@@ -84,7 +84,7 @@ def analyze_tweets(req):
             list(map(lambda t: t[0], query['tweets']))))
         vectors = tokenize_tweets(cleaned)
         model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
-        model.train(np.array(train_vector['vectors']), np.array(tmp_y))
+        # model.train(np.array(train_vector['vectors']), np.array(tmp_y))
         test_res = model.test(np.array(vectors['vectors']))
 
         pred_cats = list(
