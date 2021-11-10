@@ -31,8 +31,15 @@
                 <!-- Page content-->
                 <div class="container-fluid">
                     <h2 class="mt-4 mb-2">Classification Results</h2><br><br>
-                    <label>Username:</label><br>
-                    <label>Classification:</label><br><br>
+                    <div class="div_info">
+                        <div>
+                            User: {{request.session.user_handle}}
+                        </div>
+
+                        <div>
+                            Predicted Class: {{ user_pred }}
+                        </div>
+                    </div><br>
                     <table>
                         <thead>
                             <tr>
@@ -57,8 +64,8 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td><button class="btn btn-primary mt-4">Return</button></td>
-                                    <td><button class="btn btn-primary mt-4">View Tweets</button></td>
+                                    <td><a class="btn btn-primary mt-4" href="../user_details/">Return</a></td>
+                                    <td><a class="btn btn-primary mt-4" href="../analyze/">View Tweets</a></td>
                                 </tr>
                             </tfoot>
                         
@@ -68,11 +75,13 @@
         </div>
     </body>
 
-    <footer id="index_footer">
+    <footer>
         <div class="text-center p-4">
             <hr>
-            This web-based text classifier is designed to classify students, using their public tweets, who may have a risk of developing mental health issues, specifically anxiety and depression, during the implementation of online classes.
+            This web-based text classifier is designed to classify students, using their public tweets,  
+            who may have a risk of developing mental health issues, specifically anxiety and depression, 
+            during the implementation of online classes.
         </div>
-    </footer>   
+    </footer> 
     </body>
 </html>
