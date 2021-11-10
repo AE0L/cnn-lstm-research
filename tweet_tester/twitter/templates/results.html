@@ -17,6 +17,10 @@
                 padding: 1em;
             }
 
+            .return {
+                margin-bottom: 1.5em;
+            }
+
         </style>
     </head>
 
@@ -32,40 +36,22 @@
                     </ul>
                 </div>
             </nav>
-            <tr>
-                <td><a class="btn btn-primary" href="../classify/">Return</a></td>
-            </tr>
-        </table>
         </div>
-        <table>
-
-        <div class="d-flex justify-content-center" id="wrapper">
+        <div class="d-flex justify-content-center container-fluid" id="wrapper">
             <div id="page-content-wrapper"><br>
-                <!-- Page content-->
-                <div class="container-fluid">   
-                    <div class="div_info">
-                        <div>
-                            User: {{ query.user_handle }}
-                        </div>
-
-                        <div>
-                            Predicted Class: {{ user_pred }}
-                        </div>
-                    </div>
-                </div>
-
-                <br>
-
                 <div>
-                    Tweets:
+                    <a class="return btn btn-primary" href="../classify/">Return</a>
+                    <h1>
+                        Tweets classification:
+                    </h1>
 
                     <div>
-                        {% for tweet in tweets %}
+                        {% for item in output %}
                         <div class="tweet_card">
-                            {{ tweet.cleaned }}
+                            {{ item.tweet }}
                             <br>
                             <strong>
-                                {{ tweet.pred_cat }}
+                                Depression: {{ item.dep }}, Anxiety: {{ item.anx }}, None: {{ item.nan }}
                             </strong>
                         </div>
                         {% endfor %}

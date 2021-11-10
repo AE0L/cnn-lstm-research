@@ -17,6 +17,17 @@
                 padding: 1em;
             }
 
+            .btn-cont {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                justify-items: start;
+                width: 100%;
+            }
+
+            table {
+                width: 100%;
+            }
+
         </style>
     </head>
 
@@ -41,11 +52,11 @@
                     <br>
                     <table>
                         <tr>
-                            <td><a class="btn btn-primary" href="../date/">Date Settings</a></td>
-                            <td>
-                                <a class="btn btn-success" href="../classify/">
-                                    Classify User
-                                </a>
+                            <td colspan=2>
+                                <div class="btn-cont">
+                                    <a class="btn btn-primary" href="../date/">Date Settings</a>
+                                    <a class="btn btn-success" href="../analyze/">Classify User</a>
+                                </div>
                             </td>
                         </tr>
                     </table>

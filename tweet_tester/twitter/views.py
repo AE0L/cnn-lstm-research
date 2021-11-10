@@ -1,14 +1,20 @@
-from datetime import datetime
 import json
+import os
+from ast import literal_eval
+from datetime import datetime
+from operator import itemgetter
+
 import keras
 import numpy as np
-from django.shortcuts import render, redirect
+from django.conf import settings
+from django.shortcuts import redirect, render
 from pytz import utc
-from .models import CNNLSTMModel, EmbeddingMatrix, Tweepy, PreProcessor, TweetModel, TweetTokenizer
-from operator import itemgetter
-from ast import literal_eval
-import os
 from sklearn.preprocessing import LabelEncoder
+from tqdm import tqdm
+
+from .models import (CleanTweetModel, CNNLSTMModel, EmbeddingMatrix,
+                     PreProcessor, Tweepy, TweetModel, TweetTokenizer)
+from .utilities.log import LogLevel, log
 
 
 def index(req):
@@ -24,7 +30,6 @@ def search_user(req):
     if req.POST:
         username = req.POST.get('username', 'no_val')
 
-        # username empty
         if username == 'no_val':
             return render(req, 'index.html')
 
@@ -61,44 +66,13 @@ def analyze_tweets(req):
         'query_date': record.query_date
     }
 
-    # module_dir = os.path.dirname(__file__)
-    # train_dir_path = os.path.join(module_dir, 'res/train_test.json')
-
-    # x_train, y_train = [], []
-
-    # with open(train_dir_path, encoding='utf-8') as json_file:
-    #     data = json.load(json_file)
-    #     x_train, y_train = data['x_train'], data['y_train']
-    
-    # train_clean = list(clean_tweets(x_train))
-    # train_vector = tokenize_tweets(train_clean)
-
-    # encoder = LabelEncoder()
-    # encoder.fit(y_train)
-    # encoded_y = encoder.transform(y_train)
-    # tmp_y = keras.utils.np_utils.to_categorical(encoded_y)
-
     if (query['user_handle'] == req.session['user_handle']):
-        debug = False
         cleaned = list(clean_tweets(
             list(map(lambda t: t[0], query['tweets']))))
         vectors = tokenize_tweets(cleaned)
         model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
-        # model.train(np.array(train_vector['vectors']), np.array(tmp_y))
+        train_model(model)
         test_res = model.test(np.array(vectors['vectors']))
-
-        pred_cats = list(
-            map(lambda x: model.LABELS[np.argmax(x)], test_res['preds'])
-        )
-
-        if debug == True: print('RESULTS:')
-
-        # DEBUG
-        if debug == True:
-            for i, t in enumerate(cleaned):
-                print('cleaned tweet:', t)
-                print('predicted class:', pred_cats[i])
-                print()
 
         tweets = []
 
@@ -106,24 +80,43 @@ def analyze_tweets(req):
             o = {
                 'original':  query['tweets'][i][0],
                 'cleaned': t,
-                'pred_cat': pred_cats[i]
+                'pred_cat': test_res['preds'][i]
             }
             tweets.append(o)
 
-        return render(req, 'results.html', {
-            'query': query,
-            'tweets': tweets,
-            'user_pred': test_res['pred_cat']
-        })
+        query_record = CleanTweetModel(
+            str(req.session.session_key),
+            req.session['user_handle'],
+            json.dumps({'tweets': tweets}, default=str),
+            test_res['user_pred'][0],
+            test_res['user_pred'][1],
+            test_res['user_pred'][2]
+        )
+        query_record.save()
+
+        return redirect('classify_user')
+
     return redirect('index')
 
 
 def clean_tweets(tweets):
+    log('Cleaning tweets')
     cleaner = PreProcessor()
-    return map(lambda t: cleaner.clean_tweet(t), tweets)
+    pbar = tqdm(tweets)
+    clean = []
+    i = 0
+
+    for t in pbar:
+        clean.append(cleaner.clean_tweet(t))
+        pbar.set_description("[INFO]: Cleaning %i tweet" % i)
+        i += 1
+
+    log('Cleaning process complete')
+    return clean
 
 
 def tokenize_tweets(cleaned_tweets):
+    log('Tokenization process started')
     tokenizer = TweetTokenizer(cleaned_tweets)
     tokenizer.train_tokenize()
     vectors = tokenizer.vectorize(cleaned_tweets)
@@ -134,9 +127,61 @@ def tokenize_tweets(cleaned_tweets):
     embedding_matrix = EmbeddingMatrix()
     matrix = embedding_matrix.construct_embedding_matrix(
         file_path, tokenizer.tokenizer.word_index)
+    log('Tokenization process completed')
 
     return {'vectors': vectors, 'matrix': matrix, 'tokenizer': tokenizer}
 
-def classify_user(req):
 
-    return render(req, 'classification.html')
+def classify_user(req):
+    model_res = CleanTweetModel.objects.get(
+        session_key=req.session.session_key)
+    pred_res = [model_res.user_anx_class,
+                model_res.user_dep_class, model_res.user_nan_class]
+    user_pred = CNNLSTMModel.LABELS[np.argmax(pred_res)]
+
+    output = {
+        'user_pred': user_pred,
+        'anx_pred': '{:.0%}'.format(pred_res[0]),
+        'dep_pred': '{:.0%}'.format(pred_res[1]),
+        'nan_pred': '{:.0%}'.format(pred_res[2]),
+    }
+
+    return render(req, 'classification.html', output)
+
+
+def list_tweets(req):
+    model_res = CleanTweetModel.objects.get(
+        session_key=req.session.session_key)
+    tweet_res = json.loads(model_res.clean_tweets_json)['tweets']
+
+    tweet_out = list(map(lambda x: {
+        'tweet': x['original'],
+        'anx': '{:.0%}'.format(x['pred_cat'][0]),
+        'dep': '{:.0%}'.format(x['pred_cat'][1]),
+        'nan': '{:.0%}'.format(x['pred_cat'][2])
+    }, tweet_res))
+
+    return render(req, 'results.html', {'output': tweet_out})
+
+
+def train_model(model):
+    log('Initializing training data')
+    module_dir = os.path.dirname(__file__)
+    train_dir_path = os.path.join(module_dir, 'res/train_test.json')
+
+    x_train, y_train = [], []
+
+    with open(train_dir_path, encoding='utf-8') as json_file:
+        data = json.load(json_file)
+        x_train, y_train = data['x_train'], data['y_train']
+
+    train_clean = list(clean_tweets(x_train))
+    x_train_vector = tokenize_tweets(train_clean)
+
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    encoded_y = encoder.transform(y_train)
+    y_train_vector = keras.utils.np_utils.to_categorical(encoded_y)
+    log('Training data initialized')
+
+    model.train(np.array(x_train_vector['vectors']), np.array(y_train_vector))

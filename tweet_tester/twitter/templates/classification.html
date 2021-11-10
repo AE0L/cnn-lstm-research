@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
     <head>
 
         <meta charset="utf-8">
@@ -10,78 +11,95 @@
         <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
         <title>Classification Results</title>
 
+        <style>
+            .btn-cont {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                justify-items: start;
+            }
+
+            #wrapper {
+                margin-top: auto;
+            }
+
+        </style>
+
     </head>
 
     <body>
+        <div class="flex-wrapper">
+            <div class="container">
+                <nav class="navbar navbar-expand-lg navbar-light">
+                    <a href="/" class="navbar-brand">HOME</a>
+                    <div class="collapse navbar-collapse" id="toggleMobMenu">
+                        <ul class="navbar-nav ms-auto text center">
+                            <li>
+                                <a class="nav-link" href="/">Twitter Search</a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+            </div>
+            <div class="d-flex justify-content-center" id="wrapper">
+                <div id="page-content-wrapper">
+                    <!-- Page content-->
+                    <div class="container-fluid">
+                        <h2 class="mt-4 mb-2">Classification Results</h2><br><br>
+                        <div class="div_info">
+                            <div>
+                                User: {{request.session.user_handle}}
+                            </div>
 
-        <div class="container">
-            <nav class="navbar navbar-expand-lg navbar-light">
-                <a href="/" class="navbar-brand">HOME</a>
-                <div class="collapse navbar-collapse" id="toggleMobMenu">
-                    <ul class="navbar-nav ms-auto text center">
-                        <li>
-                            <a class="nav-link" href="/">Twitter Search</a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-        </div>
-        <div class="d-flex justify-content-center" id="wrapper">
-            <div id="page-content-wrapper">
-                <!-- Page content-->
-                <div class="container-fluid">
-                    <h2 class="mt-4 mb-2">Classification Results</h2><br><br>
-                    <div class="div_info">
-                        <div>
-                            User: {{request.session.user_handle}}
-                        </div>
-
-                        <div>
-                            Predicted Class: {{ user_pred }}
-                        </div>
-                    </div><br>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th scope="col">Class</th>
-                                <th scope="col">Prediction</th>
-                            </tr>
-                        </thead>
+                            <div>
+                                Predicted Class: {{ user_pred }}
+                            </div>
+                        </div><br>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Class</th>
+                                    <th scope="col">Prediction</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <tr>
                                     <td>Depression</td>
-                                    <td>...</td>
+                                    <td>{{ dep_pred }}</td>
                                 </tr>
                                 <tr>
                                     <td>Anxiety</td>
-                                    <td>...</td>
+                                    <td>{{ anx_pred }}</td>
                                 </tr>
                                 <tr>
                                     <td>No mental health condition</td>
-                                    <td>...</td>
+                                    <td>{{ nan_pred }}</td>
                                 </tr>
-                                
+
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td><a class="btn btn-primary mt-4" href="../user_details/">Return</a></td>
-                                    <td><a class="btn btn-primary mt-4" href="../analyze/">View Tweets</a></td>
+                                    <td colspan="2">
+                                        <div class="btn-cont">
+                                            <a class="btn btn-secondary mt-4" href="../user_details/">Return</a>
+                                            <a class="btn btn-primary mt-4" href="../list/">View Tweets</a>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tfoot>
-                        
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <footer>
+                <div class="text-center p-4">
+                    <hr>
+                    This web-based text classifier is designed to classify students, using their public tweets,
+                    who may have a risk of developing mental health issues, specifically anxiety and depression,
+                    during the implementation of online classes.
+                </div>
+            </footer>
         </div>
     </body>
 
-    <footer>
-        <div class="text-center p-4">
-            <hr>
-            This web-based text classifier is designed to classify students, using their public tweets,  
-            who may have a risk of developing mental health issues, specifically anxiety and depression, 
-            during the implementation of online classes.
-        </div>
-    </footer> 
-    </body>
 </html>

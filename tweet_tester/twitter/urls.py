@@ -7,5 +7,6 @@ urlpatterns = [
     path('user_details/', views.search_user, name="search_user"),
     path('user_tweets/', views.extract_tweets, name="extract_tweets"),
     path('analyze/', views.analyze_tweets, name="analyze_tweets"),
-    path('classify/', views.classify_user, name="classify_user")
+    path('classify/', views.classify_user, name="classify_user"),
+    path('list/', views.list_tweets, name="list_tweets")
 ]
