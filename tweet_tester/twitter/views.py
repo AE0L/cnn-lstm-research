@@ -136,3 +136,7 @@ def tokenize_tweets(cleaned_tweets):
         file_path, tokenizer.tokenizer.word_index)
 
     return {'vectors': vectors, 'matrix': matrix, 'tokenizer': tokenizer}
+
+def classify_user(req):
+
+    return render(req, 'classification.html')
