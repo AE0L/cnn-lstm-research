@@ -8,5 +8,8 @@ urlpatterns = [
     path('user_tweets/', views.extract_tweets, name="extract_tweets"),
     path('analyze/', views.analyze_tweets, name="analyze_tweets"),
     path('classify/', views.classify_user, name="classify_user"),
-    path('list/', views.list_tweets, name="list_tweets")
+    path('list/', views.list_tweets, name="list_tweets"),
+    path('train/', views.setup_train, name="setup_train"),
+    path('train-model/', views.train_model, name="train_model"),
+    path('save-model/', views.save_model, name='save_model')
 ]

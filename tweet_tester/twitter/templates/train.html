@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+            integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+        <title>Document</title>
+
+        {% load static %}
+        <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+
+        <style>
+            .flex-wrapper {
+                justify-content: center;
+                align-items: center;
+            }
+
+            form {
+                display: grid;
+                gap: 1em;
+            }
+
+            label {
+                font-weight: bold;
+            }
+
+            .file-input-cont {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1em;
+            }
+
+            .btn-cont {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1em;
+            }
+
+            .training-output {
+                height: auto;
+                width: auto;
+                min-height: 25vh;
+                min-width: 50vh;
+                background: #DADADA;
+                border: 2px solid rgba(12, 12, 12, 0.5);
+                display: grid;
+                justify-content: center;
+                padding: 1em;
+                gap: 1em;
+            }
+
+            .stat-cont {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 0.25em 1em;
+            }
+
+            .form-group {
+                display: grid;
+                gap: 0.25em;
+            }
+
+            .hide {
+                display: none;
+            }
+
+        </style>
+    </head>
+
+    <body>
+        <div class="flex-wrapper">
+            <div class="form-cont">
+                <form action="../train-model/" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="file-input-cont">
+                        <div class="form-group">
+                            <label for="train-data">Training Data</label>
+                            <input type="file" name="train-data" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="val-data">Validation Data</label>
+                            <input id="val-data" type="file" name="val-data" required>
+                        </div>
+                    </div>
+
+                    <label>
+                        <input type="checkbox" name="get-from-train" onclick="get_from_train(this.checked)">
+                        Get validation data from the training data
+                    </label>
+
+                    <div id="train-val-div-cont" class="form-group hide">
+                        <label for="train-val-percentage">
+                            Validation data Percentage to be collected from Training data (10%-20%)
+                        </label>
+                        <input id=train-val-div type="number" min=10 max=20 value=20 name="train-val-div" required
+                            disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="epoch">Epoch</label>
+                        <input type="number" max=11 value=10 min=7 name="epoch" required>
+                    </div>
+
+                    <div class="training-output">
+                        {% if result %}
+                        {{ result.acc_graph|safe }}
+
+                        {{ result.cm_graph|safe }}
+
+                        <pre>{{ result.report }}</pre>
+
+                        <div class="stat-cont">
+                            <label>Loss:</label>
+                            <label>{{ result.stats.loss }}</label>
+
+                            <label>Accuracy:</label>
+                            <label>{{ result.stats.accuracy }}</label>
+
+                            <label>F1-score:</label>
+                            <label>{{ result.stats.f1_score }}</label>
+
+                            <label>Precision:</label>
+                            <label>{{ result.stats.precision }}</label>
+
+                            <label>Recall:</label>
+                            <label>{{ result.stats.recall }}</label>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <input type="submit" class="btn btn-primary" id="train-btn" value="Train">
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function train_model() {
+                document.location.href = '/twitter/train-model/'
+            }
+
+            val_data = document.getElementById('val-data')
+            train_val_div_cont = document.getElementById('train-val-div-cont')
+            train_val_div = document.getElementById('train-val-div')
+
+            function get_from_train(c) {
+                if (c) {
+                    train_val_div_cont.classList.toggle('hide')
+                    train_val_div.disabled = false
+                    val_data.disabled = true
+                } else {
+                    train_val_div_cont.classList.toggle('hide')
+                    train_val_div.disabled = true
+                    val_data.disabled = false
+                }
+            }
+        </script>
+    </body>
+
+</html>

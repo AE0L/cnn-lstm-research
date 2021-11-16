@@ -1,20 +1,20 @@
 import json
 import os
-from ast import literal_eval
-from datetime import datetime
 from operator import itemgetter
 
 import keras
 import numpy as np
-from django.conf import settings
+from cnn_lstm.model.model import CNNLSTMModel
+from cnn_lstm.model.preprocessing import (EmbeddingMatrix, PreProcessor,
+                                          TweetTokenizer)
 from django.shortcuts import redirect, render
-from pytz import utc
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
+from utilities.logging.log import log
 
-from .models import (CleanTweetModel, CNNLSTMModel, EmbeddingMatrix,
-                     PreProcessor, Tweepy, TweetModel, TweetTokenizer)
-from .utilities.log import LogLevel, log
+from .models import CleanTweetModel, Tweepy, TweetModel
+from .config.model_parameters import setup_params
 
 
 def index(req):
@@ -22,7 +22,6 @@ def index(req):
 
 
 def date_settings(req):
-
     return render(req, 'date.html')
 
 
@@ -71,7 +70,6 @@ def analyze_tweets(req):
             list(map(lambda t: t[0], query['tweets']))))
         vectors = tokenize_tweets(cleaned)
         model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
-        train_model(model)
         test_res = model.test(np.array(vectors['vectors']))
 
         tweets = []
@@ -156,6 +154,7 @@ def list_tweets(req):
 
     tweet_out = list(map(lambda x: {
         'tweet': x['original'],
+        'clean': x['cleaned'],
         'anx': '{:.0%}'.format(x['pred_cat'][0]),
         'dep': '{:.0%}'.format(x['pred_cat'][1]),
         'nan': '{:.0%}'.format(x['pred_cat'][2])
@@ -164,24 +163,96 @@ def list_tweets(req):
     return render(req, 'results.html', {'output': tweet_out})
 
 
-def train_model(model):
-    log('Initializing training data')
-    module_dir = os.path.dirname(__file__)
-    train_dir_path = os.path.join(module_dir, 'res/train_test.json')
+def train(train=None, val=None, epochs=10):
+    log('Testing dat initialized')
 
-    x_train, y_train = [], []
+    train_vector = tokenize_tweets(train['x_train'])
+    val_vector = tokenize_tweets(val['x_val'])
 
-    with open(train_dir_path, encoding='utf-8') as json_file:
-        data = json.load(json_file)
-        x_train, y_train = data['x_train'], data['y_train']
+    model = CNNLSTMModel(
+        train_vector['tokenizer'].tokenizer,
+        train_vector['matrix'],
+        setup_params(EmbeddingMatrix, TweetTokenizer)
+    )
 
-    train_clean = list(clean_tweets(x_train))
-    x_train_vector = tokenize_tweets(train_clean)
+    result = model.train(
+        train_vector['vectors'],
+        train['y_train'],
+        val_vector['vectors'],
+        val['y_val'],
+        epochs
+    )
+    model.model.save(model.model_file_path)
 
-    encoder = LabelEncoder()
-    encoder.fit(y_train)
-    encoded_y = encoder.transform(y_train)
-    y_train_vector = keras.utils.np_utils.to_categorical(encoded_y)
-    log('Training data initialized')
+    return result
 
-    model.train(np.array(x_train_vector['vectors']), np.array(y_train_vector))
+
+def train_model(req):
+    if req.POST:
+        epochs = int(req.POST.get('epoch'))
+        div_train = req.POST.get('get-from-train')
+        train_data = {}
+
+        log('Initializing training data')
+        if 'train-data' in req.FILES:
+            # PARSE UPLOADED TRAINING DATA
+            file = req.FILES['train-data']
+            data = file.read()
+            train_data = json.loads(data)
+
+            # CLEAN TRAINING DATA TWEETS
+            train_data['clean'] = clean_tweets(train_data['x_train'])
+
+            # VECTORIZE LABELS
+            encoder = LabelEncoder()
+            encoder.fit(train_data['y_train'])
+            encoded_y = encoder.transform(train_data['y_train'])
+            train_data['y_train'] = keras.utils.np_utils.to_categorical(
+                encoded_y)
+
+        log('training data initialized')
+        log('Initializing testing data')
+        if div_train:
+            div_ratio = int(req.POST.get('train-val-div')) / 100
+            # SPLIT TRAINING DATA
+            x_train, x_val, y_train, y_val = train_test_split(
+                train_data['x_train'],
+                train_data['y_train'],
+                test_size=div_ratio,
+                random_state=42
+            )
+
+            train_data = {'x_train': x_train, 'y_train': y_train}
+            val_data = {'x_val': x_val, 'y_val': y_val}
+
+            return render(req, 'train.html', {'result': train(
+                train=train_data,
+                val=val_data,
+                epochs=epochs
+            )})
+        else:
+            # PARSE UPLOADED TESTING DATA
+            if 'val-data' in req.FILES:
+                file = req.FILES['val-data']
+                data = file.read()
+                val_data = json.loads(data)
+
+            encoder = LabelEncoder()
+            encoder.fit(val_data['y_val'])
+            encoded_y = encoder.transform(val_data['y_val'])
+            val_data['y_val'] = keras.utils.np_utils.to_categorical(
+                encoded_y)
+
+            return render(req, 'train.html', {'result': train(
+                train=train_data,
+                val=val_data,
+                epochs=epochs
+            )})
+
+
+def setup_train(req):
+    return render(req, 'train.html')
+
+
+def save_model(req):
+    return render(req, 'train.html')

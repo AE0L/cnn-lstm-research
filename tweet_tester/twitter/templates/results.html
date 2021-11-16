@@ -21,6 +21,11 @@
                 margin-bottom: 1.5em;
             }
 
+            .clean-tweet {
+                color: rgb(50, 50, 50);
+                font-size: 0.85em;
+            }
+
         </style>
     </head>
 
@@ -48,8 +53,11 @@
                     <div>
                         {% for item in output %}
                         <div class="tweet_card">
-                            {{ item.tweet }}
-                            <br>
+                            <p>{{ item.tweet }}</p>
+                            <p class="clean-tweet">
+                                <strong style="font-size:inherit;">Cleaned Tweet:</strong>
+                                {{ item.clean }}
+                            </p>
                             <strong>
                                 Depression: {{ item.dep }}, Anxiety: {{ item.anx }}, None: {{ item.nan }}
                             </strong>

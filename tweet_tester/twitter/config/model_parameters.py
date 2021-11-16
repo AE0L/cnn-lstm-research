@@ -7,18 +7,22 @@ def setup_params(matrix, tokenizer):
         },
 
         'cnn': {
-            'FILTERS': 128,
-            'KERNEL': 3,
+            'FILTERS': 64,
+            'KERNEL': 5,
             'ACTIVATION': 'relu',
         },
 
         'max-pooling': {
-            'POOL_SIZE': 2
+            'POOL_SIZE': 3,
+            'STRIDES': 1
+        },
+
+        'dropout': {
+            'RATE': 0.2
         },
 
         'lstm': {
             'UNITS': 100,
-            'DROPOUT': 0.8
         },
 
         'dense': {
@@ -28,7 +32,6 @@ def setup_params(matrix, tokenizer):
 
         'compile': {
             'LOSS': 'categorical_crossentropy',
-            'OPTIMIZER': 'adam',
-            'METRICS': ['accuracy']
+            'OPTIMIZER': 'adam'
         }
     }
