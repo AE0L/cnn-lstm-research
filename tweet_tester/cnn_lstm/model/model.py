@@ -28,6 +28,7 @@ class CNNLSTMModel:
         module_dir = os.path.dirname(__file__)
         self.model_file_path = os.path.join(module_dir, 'res/cnn-lstm-model')
 
+        # CHECK IF THERE IS A MODEL SAVED
         if os.path.exists(self.model_file_path):
             print('LOADING MODEL...')
             self.model = kmodels.load_model(
@@ -39,6 +40,7 @@ class CNNLSTMModel:
                 }
             )
         else:
+            # MODEL'S LAYER PARAMETERS
             # Embedding Layer
             input_dim = len(tokenizer.word_index) + 1
             output_dim = params['embedding']['OUTPUT_DIM']
@@ -71,6 +73,8 @@ class CNNLSTMModel:
                 weights=weights,
                 trainable=trainable,
             )
+
+            # CREATE THE MODEL
             model = Sequential()
             model.add(embedding_layer)
             model.add(Conv1D(filters, kernel, activation=cnn_act))
@@ -90,6 +94,7 @@ class CNNLSTMModel:
         verbose = 2
         log('Training the model')
 
+        # TRAIN MODEL
         history = self.model.fit(
             x_train,
             y_train,
@@ -101,6 +106,7 @@ class CNNLSTMModel:
         log('Model training completed')
         log('Evaluating Model')
 
+        # TEST MODEL
         y_test = np.argmax(y_val, axis=1)
         y_pred = self.model.predict(x_val)
         report = classification_report(
@@ -109,15 +115,18 @@ class CNNLSTMModel:
             target_names=self.LABELS
         )
 
+        # GET MODEL'S STATISTICS
         loss, acc, f1_score, precision, recall = self.model.evaluate(
             x_val, y_val)
 
         log('Saving model')
 
+        # SAVE MODEL
         self.model.save(self.model_file_path)
 
         log('Model successfully saved')
 
+        # PLOT MODEL'S ACCURACY 
         acc_fig = plt.figure()
         plt.plot(history.history['accuracy'])
         plt.plot(history.history['val_accuracy'])
@@ -131,6 +140,7 @@ class CNNLSTMModel:
         imgdata.seek(0)
         acc_graph = imgdata.getvalue()
 
+        # PLOT CONFUSION MATRIX
         cm_fig = plt.figure()
         cm = confusion_matrix(np.argmax(y_val, axis=1), np.argmax(y_pred, axis=1))
         cm_df = pd.DataFrame(

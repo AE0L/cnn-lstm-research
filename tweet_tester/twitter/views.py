@@ -32,6 +32,7 @@ def search_user(req):
         if username == 'no_val':
             return render(req, 'index.html')
 
+        # EXTRACT TWITTER USER INFO
         user_info = Tweepy.search_user_info(username)
         req.session['user_id'], req.session['user_handle'], req.session['user_auth'] = itemgetter(
             'user_id', 'user_handle', 'user_auth')(user_info)
@@ -44,9 +45,12 @@ def extract_tweets(req):
         user_id = req.session['user_id']
         since_date = req.POST.get('since_date')
         end_date = req.POST.get('end_date')
+
+        # EXTRACT USER'S TWEETS w/ TIME FRAME
         tweets = Tweepy.get_tweets(user_id, since_date, end_date)
         tweets_json = json.dumps({'tweets': tweets}, default=str)
 
+        # STORE EXTRACTED TWEETS
         query_record = TweetModel(str(
             req.session.session_key), req.session['user_handle'], since_date, end_date, tweets_json)
 
@@ -56,6 +60,7 @@ def extract_tweets(req):
 
 
 def analyze_tweets(req):
+    # RETRIEVE USER'S TWEETS
     record = TweetModel.objects.get(session_key=req.session.session_key)
     query = {
         'user_handle': record.user_handle,
@@ -66,10 +71,15 @@ def analyze_tweets(req):
     }
 
     if (query['user_handle'] == req.session['user_handle']):
+        # CLEAN TWEETS
         cleaned = list(clean_tweets(
-            list(map(lambda t: t[0], query['tweets']))))
+            list(map(lambda t: t[0], query['tweets']))
+        ))
+        # TOKENIZE TWEETS
         vectors = tokenize_tweets(cleaned)
+        # INITIALIZE MODEL
         model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
+        # CLASSIFY TWEETS
         test_res = model.test(np.array(vectors['vectors']))
 
         tweets = []
@@ -148,6 +158,7 @@ def classify_user(req):
 
 
 def list_tweets(req):
+    # RETRIEVE TWEETS FROM DB
     model_res = CleanTweetModel.objects.get(
         session_key=req.session.session_key)
     tweet_res = json.loads(model_res.clean_tweets_json)['tweets']
@@ -166,15 +177,18 @@ def list_tweets(req):
 def train(train=None, val=None, epochs=10):
     log('Testing dat initialized')
 
+    # TOKENIZE TRAINING AND TESTING DATASET
     train_vector = tokenize_tweets(train['x_train'])
     val_vector = tokenize_tweets(val['x_val'])
 
+    # INITIALIZE MODEL
     model = CNNLSTMModel(
         train_vector['tokenizer'].tokenizer,
         train_vector['matrix'],
         setup_params(EmbeddingMatrix, TweetTokenizer)
     )
 
+    # TRAIN MODEL
     result = model.train(
         train_vector['vectors'],
         train['y_train'],
@@ -182,6 +196,8 @@ def train(train=None, val=None, epochs=10):
         val['y_val'],
         epochs
     )
+
+    # SAVE MODEL
     model.model.save(model.model_file_path)
 
     return result
@@ -251,8 +267,4 @@ def train_model(req):
 
 
 def setup_train(req):
-    return render(req, 'train.html')
-
-
-def save_model(req):
     return render(req, 'train.html')
