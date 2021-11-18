@@ -197,9 +197,6 @@ def train(train=None, val=None, epochs=10):
         epochs
     )
 
-    # SAVE MODEL
-    model.model.save(model.model_file_path)
-
     return result
 
 
