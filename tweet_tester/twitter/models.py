@@ -62,6 +62,8 @@ class Tweepy:
         last_date = datetime.datetime(
             date1.year, date1.month, date1.day, 0, 0, 0, tzinfo=utc)
 
+        log('test')
+
         log('Collecting tweets')
         tweepy_items = tweepy.Cursor(
             api.user_timeline,

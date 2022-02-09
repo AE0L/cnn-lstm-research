@@ -1,6 +1,8 @@
 import json
 import os
+from tokenize import String
 from tracemalloc import start
+from xml.etree.ElementTree import tostring
 
 import numpy as np
 from celery import shared_task
@@ -16,6 +18,7 @@ from .models import CleanTweetModel, Tweepy, TweetModel
 
 @shared_task(bind=True)
 def get_user_tweets(self, ses_key, handle, user_id, since_date, end_date):
+    log('Preparing to get user tweets')
     # EXTRACT USER'S TWEETS w/ TIME FRAME
     tweets = Tweepy.get_tweets(user_id, since_date, end_date)
     print('QWERTY: ', len(tweets))
@@ -42,12 +45,14 @@ def classify_tweets(self, ses_key, user_handle, user_tweets):
     pr = ProgressRecorder(self)
     pr.set_progress(0, max_len, 'Cleaning Tweets')
     # CLEAN TWEETS
-    cleaned = list(clean_tweets(user_tweets, task=True, pr=pr))
+    cleaned, rem_index = list(clean_tweets(user_tweets, task=True, pr=pr))
+    user_tweets = [x for i, x in enumerate(user_tweets) if i not in rem_index]
+
     # TOKENIZE TWEETS
-    pr.set_progress(len(cleaned) + 1, max_len, 'Tokenizing tweets')
+    pr.set_progress(len(cleaned) + 1, len(cleaned), 'Tokenizing tweets')
     vectors = tokenize_tweets(cleaned)
     # CLASSIFY TWEETS
-    pr.set_progress(len(cleaned) + 2, max_len, 'Classifying tweets')
+    pr.set_progress(len(cleaned) + 2, len(cleaned), 'Classifying tweets')
     model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
     test_res = model.test(np.array(vectors['vectors']))
 
@@ -92,20 +97,22 @@ def clean_tweets(tweets, vector=None, task=False, pr=None):
         clean_t = cleaner.clean_tweet(t)
 
         if (len(clean_t) > 0 and clean_t != ''):
-                clean.append(clean_t)
+            clean.append(clean_t)
         else:
             rem_vect.append(i)
-
-    log(f'removed {len(rem_vect)} empty tweets')
         
-    r_vector = [x for i, x in enumerate(vector) if i not in rem_vect]
+    log(f'removed {len(rem_vect)} empty tweets')
 
-    log(len(clean))
-    log(len(r_vector))
 
-    log('Cleaning process complete')
+    if not task:
+        r_vector = [x for i, x in enumerate(vector) if i not in rem_vect]
+        log('Cleaning process complete')
+        return (clean, r_vector)
+    else:
+        log('Cleaning process complete')
+        return (clean, rem_vect)
 
-    return (clean, r_vector)
+
 
 
 def tokenize_tweets(cleaned_tweets):
