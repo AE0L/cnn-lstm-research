@@ -104,12 +104,14 @@
 
                     <div class="form-group">
                         <label for="epoch">Epoch</label>
-                        <input type="number" max=11 value=10 min=7 name="epoch" required>
+                        <input type="number" max=50 value=20 min=7 name="epoch" required>
                     </div>
 
                     <div class="training-output">
                         {% if result %}
                         {{ result.acc_graph|safe }}
+
+                        {{ result.loss_graph|safe }}
 
                         {{ result.cm_graph|safe }}
 

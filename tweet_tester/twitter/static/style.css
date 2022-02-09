@@ -12,7 +12,12 @@ body {
 }
 
 body {
-	background-color: #70C4F6;
+	background-color: #FAFAFA;
+	color: #121212;
+}
+
+.btn-primary {
+	background-color: #03256C;
 }
 
 h4 {
@@ -30,7 +35,7 @@ button:hover[type="submit"] {
 .div_info {
 	width: 400px;
 	height: 50%;
-	background-color: #43b8f7;
+	background-color: #d9d9d9;
 	border-radius: 10px;
 	text-align: center;
 	padding: 1em;

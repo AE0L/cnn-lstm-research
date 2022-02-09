@@ -62,13 +62,19 @@ class Tweepy:
         last_date = datetime.datetime(
             date1.year, date1.month, date1.day, 0, 0, 0, tzinfo=utc)
 
-        log('Collecting tweets:')
-        progress = tqdm(
-            tweepy.Cursor(api.user_timeline, user_id=userid, include_rts=False, exclude_replies=True, count=100, tweet_mode='extended').items(), ascii=True
-        )
+        log('Collecting tweets')
+        tweepy_items = tweepy.Cursor(
+            api.user_timeline,
+            user_id=userid,
+            include_rts=False,
+            exclude_replies=True,
+            count=100,
+            tweet_mode='extended'
+        ).items()
+        progress = tqdm(tweepy_items, ascii=True)
 
-        for tweet in progress:
-            progress.set_description("[INFO]: Processing %i tweet" % count)
+        for i, tweet in enumerate(progress):
+            progress.set_description(f"[INFO]: Processing {count} tweet")
             if tweet.created_at >= start_date:
                 if tweet.created_at <= last_date:
                     try:

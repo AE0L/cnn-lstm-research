@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +8,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
             integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-        {% load static %}
         <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
         <title>User Tweets</title>
 
@@ -22,6 +22,11 @@
                 grid-template-columns: 1fr auto;
                 justify-items: start;
                 width: 100%;
+            }
+
+            #page-content-wrapper {
+                width: 100%;
+                padding: 1em;
             }
 
             table {
@@ -47,37 +52,29 @@
 
         <div class="d-flex justify-content-center" id="wrapper">
             <div id="page-content-wrapper">
-                <!-- Page content-->
                 <div class="container-fluid">
-                    <br>
-                    <table>
-                        <tr>
-                            <td colspan=2>
-                                <div class="btn-cont">
-                                    <a class="btn btn-primary" href="../date/">Date Settings</a>
-                                    <a class="btn btn-success" href="../analyze/">Classify User</a>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <h4>
-                        User Tweets
-
-                        (Total of {{ output|length }} tweet/s)
-                    </h4>
-
-                    {% for tweet in output %}
-                    <div class="tweet_card">
-                        {{ tweet.text }}
-                        <br>
-                        {{ tweet.timestamp }}
+                    <div class='progress-wrapper'>
+                        <div id='progress-bar' class='progress-bar' style="background-color: #68a9ef; width: 0%;">&nbsp;
+                        </div>
                     </div>
-                    {% endfor %}
-
+                    <div id="progress-bar-message">Waiting for progress to start...</div>
                 </div>
             </div>
         </div>
+
+        <script src="{% static 'celery_progress/celery_progress.js' %}"></script>
+        <script>
+            function processProgress(progressBarElement, progressBarMessageElement, progress) {
+                
+            }
+            // vanilla JS version
+            document.addEventListener("DOMContentLoaded", function () {
+                var progressUrl = "{% url 'celery_progress:task_status' task_id %}";
+                CeleryProgressBar.initProgressBar(progressUrl, {
+                    onSuccess: () => { window.location = "{% url 'classify_user' %}" }
+                });
+            });
+        </script>
     </body>
 
 </html>

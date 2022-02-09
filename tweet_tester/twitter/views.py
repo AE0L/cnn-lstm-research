@@ -1,20 +1,26 @@
 import json
 import os
 from operator import itemgetter
+from celery_progress.backend import ProgressRecorder
+from django.http.response import JsonResponse
 
 import keras
 import numpy as np
 from cnn_lstm.model.model import CNNLSTMModel
 from cnn_lstm.model.preprocessing import (EmbeddingMatrix, PreProcessor,
                                           TweetTokenizer)
+from keras.utils.np_utils import to_categorical
 from django.shortcuts import redirect, render
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MultiLabelBinarizer
 from tqdm import tqdm
-from utilities.logging.log import log
+from utilities.logging.log import log, LogLevel
+
+from celery.result import AsyncResult
 
 from .models import CleanTweetModel, Tweepy, TweetModel
 from .config.model_parameters import setup_params
+from .tasks import get_user_tweets, classify_tweets, clean_tweets, tokenize_tweets
 
 
 def index(req):
@@ -25,6 +31,9 @@ def date_settings(req):
     return render(req, 'date.html')
 
 
+# =============================================================================
+# QUERYING USER's ACCOUNT INFO
+# =============================================================================
 def search_user(req):
     if req.POST:
         username = req.POST.get('username', 'no_val')
@@ -40,104 +49,58 @@ def search_user(req):
     return render(req, 'date.html')
 
 
+# =============================================================================
+# EXTRACTING USER's TWEETS
+# =============================================================================
 def extract_tweets(req):
     if req.POST:
+        ses_key = str(req.session.session_key)
+        handle = req.session['user_handle']
         user_id = req.session['user_id']
         since_date = req.POST.get('since_date')
         end_date = req.POST.get('end_date')
 
-        # EXTRACT USER'S TWEETS w/ TIME FRAME
-        tweets = Tweepy.get_tweets(user_id, since_date, end_date)
-        tweets_json = json.dumps({'tweets': tweets}, default=str)
+        task = get_user_tweets.delay(
+            ses_key, handle, user_id, since_date, end_date)
 
-        # STORE EXTRACTED TWEETS
-        query_record = TweetModel(str(
-            req.session.session_key), req.session['user_handle'], since_date, end_date, tweets_json)
-
-        query_record.save()
-
-        return render(req, 'user_tweets.html', {'output': map(lambda t: {'text': t[0], 'timestamp': t[1], 'vectors': [], 'matrix': []}, tweets)})
+        return render(req, 'load_user_tweets.html', {'task_id': task.task_id})
 
 
+def check_extract_tweets_process(req, task_id):
+    # task_id = req.GET.get('task_id')
+    if task_id:
+        async_result = AsyncResult(task_id)
+        return JsonResponse({'finish': async_result.ready()})
+    return JsonResponse({'finish': False})
+
+
+def view_extract_tweets(req):
+    ses_key = req.session.session_key
+    record = TweetModel.objects.get(session_key=ses_key)
+    tweets = json.loads(record.tweets_json)['tweets']
+
+    return render(req, 'user_tweets.html', {
+        'output': list(map(lambda t: {
+            'text': t[0],
+            'timestamp': t[1],
+        }, tweets))
+    })
+
+
+# =============================================================================
+# ANALYZING USER's TWEETS
+# =============================================================================
 def analyze_tweets(req):
-    # RETRIEVE USER'S TWEETS
-    record = TweetModel.objects.get(session_key=req.session.session_key)
-    query = {
-        'user_handle': record.user_handle,
-        'since_date': record.tweets_since_date,
-        'end_date': record.tweets_end_date,
-        'tweets': json.loads(record.tweets_json)['tweets'],
-        'query_date': record.query_date
-    }
+    ses_key = req.session.session_key
+    record = TweetModel.objects.get(session_key=ses_key)
+    user_handle = record.user_handle
+    user_tweets = json.loads(record.tweets_json)['tweets']
 
-    if (query['user_handle'] == req.session['user_handle']):
-        # CLEAN TWEETS
-        cleaned = list(clean_tweets(
-            list(map(lambda t: t[0], query['tweets']))
-        ))
-        # TOKENIZE TWEETS
-        vectors = tokenize_tweets(cleaned)
-        # INITIALIZE MODEL
-        model = CNNLSTMModel(vectors['tokenizer'].tokenizer, vectors['matrix'])
-        # CLASSIFY TWEETS
-        test_res = model.test(np.array(vectors['vectors']))
-
-        tweets = []
-
-        for i, t in enumerate(cleaned):
-            o = {
-                'original':  query['tweets'][i][0],
-                'cleaned': t,
-                'pred_cat': test_res['preds'][i]
-            }
-            tweets.append(o)
-
-        query_record = CleanTweetModel(
-            str(req.session.session_key),
-            req.session['user_handle'],
-            json.dumps({'tweets': tweets}, default=str),
-            test_res['user_pred'][0],
-            test_res['user_pred'][1],
-            test_res['user_pred'][2]
-        )
-        query_record.save()
-
-        return redirect('classify_user')
+    if (user_handle == req.session['user_handle']):
+        task = classify_tweets.delay(ses_key, user_handle, user_tweets)
+        return render(req, 'load_analyze_tweets.html', {'task_id': task.task_id})
 
     return redirect('index')
-
-
-def clean_tweets(tweets):
-    log('Cleaning tweets')
-    cleaner = PreProcessor()
-    pbar = tqdm(tweets)
-    clean = []
-    i = 0
-
-    for t in pbar:
-        clean.append(cleaner.clean_tweet(t))
-        pbar.set_description("[INFO]: Cleaning %i tweet" % i)
-        i += 1
-
-    log('Cleaning process complete')
-    return clean
-
-
-def tokenize_tweets(cleaned_tweets):
-    log('Tokenization process started')
-    tokenizer = TweetTokenizer(cleaned_tweets)
-    tokenizer.train_tokenize()
-    vectors = tokenizer.vectorize(cleaned_tweets)
-
-    module_dir = os.path.dirname(__file__)
-    file_path = os.path.join(module_dir, 'res/glove.txt')
-
-    embedding_matrix = EmbeddingMatrix()
-    matrix = embedding_matrix.construct_embedding_matrix(
-        file_path, tokenizer.tokenizer.word_index)
-    log('Tokenization process completed')
-
-    return {'vectors': vectors, 'matrix': matrix, 'tokenizer': tokenizer}
 
 
 def classify_user(req):
@@ -174,8 +137,11 @@ def list_tweets(req):
     return render(req, 'results.html', {'output': tweet_out})
 
 
+# =============================================================================
+# TRAINING THE CNN-LSTM MODEL
+# =============================================================================
 def train(train=None, val=None, epochs=10):
-    log('Testing dat initialized')
+    log('Testing data initialized')
 
     # TOKENIZE TRAINING AND TESTING DATASET
     train_vector = tokenize_tweets(train['x_train'])
@@ -214,14 +180,28 @@ def train_model(req):
             train_data = json.loads(data)
 
             # CLEAN TRAINING DATA TWEETS
-            train_data['clean'] = clean_tweets(train_data['x_train'])
+            clean_x, clean_y = clean_tweets(train_data['x_train'], vector=train_data['y_train'])
+
+            len_anx = 0
+            len_dep = 0
+            len_nan = 0
+
+            for y in clean_y:
+                if 0 in y:
+                    len_anx += 1
+                if 1 in y:
+                    len_dep += 1
+                if 2 in y:
+                    len_nan += 1
+
+            log(f'ANXIETY class: {len_anx}')
+            log(f'DEPRESSION class: {len_dep}')
+            log(f'NONE class: {len_nan}')
 
             # VECTORIZE LABELS
-            encoder = LabelEncoder()
-            encoder.fit(train_data['y_train'])
-            encoded_y = encoder.transform(train_data['y_train'])
-            train_data['y_train'] = keras.utils.np_utils.to_categorical(
-                encoded_y)
+            encoder = MultiLabelBinarizer()
+            encoded_y = encoder.fit_transform(clean_y)
+            clean_y = np.asarray(encoded_y)
 
         log('training data initialized')
         log('Initializing testing data')
@@ -229,11 +209,15 @@ def train_model(req):
             div_ratio = int(req.POST.get('train-val-div')) / 100
             # SPLIT TRAINING DATA
             x_train, x_val, y_train, y_val = train_test_split(
-                train_data['x_train'],
-                train_data['y_train'],
+                clean_x,
+                clean_y,
                 test_size=div_ratio,
-                random_state=42
+                random_state=42,
+                stratify=clean_y
             )
+
+            log(f'train dataset: {len(x_train)}')
+            log(f'test dataset: {len(x_val)}')
 
             train_data = {'x_train': x_train, 'y_train': y_train}
             val_data = {'x_val': x_val, 'y_val': y_val}
@@ -250,11 +234,11 @@ def train_model(req):
                 data = file.read()
                 val_data = json.loads(data)
 
-            encoder = LabelEncoder()
-            encoder.fit(val_data['y_val'])
-            encoded_y = encoder.transform(val_data['y_val'])
+            encoder = MultiLabelBinarizer()
+            encoded_y = encoder.fit_transform(val_data['y_val'])
+            # encoded_y = encoder.transform(val_data['y_val'])
             val_data['y_val'] = keras.utils.np_utils.to_categorical(
-                encoded_y)
+                encoded_y, 3)
 
             return render(req, 'train.html', {'result': train(
                 train=train_data,
