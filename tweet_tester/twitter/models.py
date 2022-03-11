@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from utilities.logging.log import log
 
-
 class Tweepy:
     @staticmethod
     def search_user_info(username):

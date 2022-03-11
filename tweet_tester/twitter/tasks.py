@@ -1,4 +1,6 @@
 import json
+import pandas as pd
+import csv
 import os
 from tokenize import String
 from tracemalloc import start
@@ -14,14 +16,15 @@ from tqdm import tqdm
 from utilities.logging.log import log, LogLevel
 
 from .models import CleanTweetModel, Tweepy, TweetModel
+from .config.model_parameters import setup_params
 
 
 @shared_task(bind=True)
 def get_user_tweets(self, ses_key, handle, user_id, since_date, end_date):
     log('Preparing to get user tweets')
+
     # EXTRACT USER'S TWEETS w/ TIME FRAME
     tweets = Tweepy.get_tweets(user_id, since_date, end_date)
-    print('QWERTY: ', len(tweets))
     tweets_json = json.dumps({'tweets': tweets}, default=str)
 
     # STORE EXTRACTED TWEETS
@@ -100,9 +103,8 @@ def clean_tweets(tweets, vector=None, task=False, pr=None):
             clean.append(clean_t)
         else:
             rem_vect.append(i)
-        
-    log(f'removed {len(rem_vect)} empty tweets')
 
+    log(f'removed {len(rem_vect)} empty tweets')
 
     if not task:
         r_vector = [x for i, x in enumerate(vector) if i not in rem_vect]
@@ -113,10 +115,9 @@ def clean_tweets(tweets, vector=None, task=False, pr=None):
         return (clean, rem_vect)
 
 
-
-
 def tokenize_tweets(cleaned_tweets):
     log('Tokenization process started')
+    log(f'Number of tweets to be tokenize: {len(cleaned_tweets)}')
     tokenizer = TweetTokenizer(cleaned_tweets)
     tokenizer.train_tokenize()
     vectors = tokenizer.vectorize(cleaned_tweets)

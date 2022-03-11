@@ -108,7 +108,24 @@ def classify_user(req):
         session_key=req.session.session_key)
     pred_res = [model_res.user_anx_class,
                 model_res.user_dep_class, model_res.user_nan_class]
-    user_pred = CNNLSTMModel.LABELS[np.argmax(pred_res)]
+    # user_pred = CNNLSTMModel.LABELS[np.argmax(pred_res)]
+    user_pred = []
+
+    anx_thresh = 0.88
+    dep_thresh = 0.63
+    nan_thresh = 0.02
+
+    for i, pred_class in enumerate(pred_res):
+        if i == 0 and pred_class > anx_thresh:
+            user_pred.append(CNNLSTMModel.LABELS[0])
+
+        if i == 1 and pred_class > dep_thresh:
+            user_pred.append(CNNLSTMModel.LABELS[1])
+
+    user_pred = ', '.join(user_pred)
+
+    if len(user_pred) == 0:
+        user_pred = 'NONE'
 
     output = {
         'user_pred': user_pred,
@@ -173,6 +190,7 @@ def train_model(req):
         train_data = {}
 
         log('Initializing training data')
+
         if 'train-data' in req.FILES:
             # PARSE UPLOADED TRAINING DATA
             file = req.FILES['train-data']
@@ -180,7 +198,8 @@ def train_model(req):
             train_data = json.loads(data)
 
             # CLEAN TRAINING DATA TWEETS
-            clean_x, clean_y = clean_tweets(train_data['x_train'], vector=train_data['y_train'])
+            clean_x, clean_y = clean_tweets(
+                train_data['x_train'], vector=train_data['y_train'])
 
             len_anx = 0
             len_dep = 0
@@ -203,48 +222,32 @@ def train_model(req):
             encoded_y = encoder.fit_transform(clean_y)
             clean_y = np.asarray(encoded_y)
 
-        log('training data initialized')
-        log('Initializing testing data')
-        if div_train:
-            div_ratio = int(req.POST.get('train-val-div')) / 100
-            # SPLIT TRAINING DATA
-            x_train, x_val, y_train, y_val = train_test_split(
-                clean_x,
-                clean_y,
-                test_size=div_ratio,
-                random_state=42,
-                stratify=clean_y
-            )
+            log('training data initialized')
+            log('Initializing testing data')
 
-            log(f'train dataset: {len(x_train)}')
-            log(f'test dataset: {len(x_val)}')
+            if div_train:
+                div_ratio = int(req.POST.get('train-val-div')) / 100
 
-            train_data = {'x_train': x_train, 'y_train': y_train}
-            val_data = {'x_val': x_val, 'y_val': y_val}
+                # SPLIT TRAINING DATA
+                x_train, x_val, y_train, y_val = train_test_split(
+                    clean_x,
+                    clean_y,
+                    test_size=div_ratio,
+                    random_state=42,
+                    stratify=clean_y
+                )
 
-            return render(req, 'train.html', {'result': train(
-                train=train_data,
-                val=val_data,
-                epochs=epochs
-            )})
-        else:
-            # PARSE UPLOADED TESTING DATA
-            if 'val-data' in req.FILES:
-                file = req.FILES['val-data']
-                data = file.read()
-                val_data = json.loads(data)
+                log(f'train dataset: {len(x_train)}')
+                log(f'test dataset: {len(x_val)}')
 
-            encoder = MultiLabelBinarizer()
-            encoded_y = encoder.fit_transform(val_data['y_val'])
-            # encoded_y = encoder.transform(val_data['y_val'])
-            val_data['y_val'] = keras.utils.np_utils.to_categorical(
-                encoded_y, 3)
+                train_data = {'x_train': x_train, 'y_train': y_train}
+                val_data = {'x_val': x_val, 'y_val': y_val}
 
-            return render(req, 'train.html', {'result': train(
-                train=train_data,
-                val=val_data,
-                epochs=epochs
-            )})
+                return render(req, 'train.html', {'result': train(
+                    train=train_data,
+                    val=val_data,
+                    epochs=epochs
+                )})
 
 
 def setup_train(req):
